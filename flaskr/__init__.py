@@ -35,9 +35,16 @@ def create_app(test_config=None):
 
 
 
-    # register blueprint
+    # register auth blueprint
     from . import auth
     app.register_blueprint(auth.bp)
+
+    # register blog blueprint
+    from . import blog
+    app.register_blueprint(blog.bp)
+    app.add_url_rule('/', endpoint='index')
+
+
 
     return app
 

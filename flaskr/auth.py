@@ -75,7 +75,7 @@ def load_logged_in_user():
         g.user = None
     else:
         g.user = get_db().execute(
-            'SELECT * FROM user where id = ?', (user_id)
+            'SELECT * FROM user WHERE id = ?', (user_id,)
         ).fetchone()
 
 
@@ -83,7 +83,7 @@ def load_logged_in_user():
 @bp.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for('auth.login'))
 
 
 # require authentication for other views
