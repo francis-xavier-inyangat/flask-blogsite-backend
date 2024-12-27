@@ -76,16 +76,16 @@ flask_learning/
 
 ## Usage
 
-### Running the Application
+### Running the Application on Dev
 _cd flask_learning_
 1. Initialize the database:
    ```bash
-   flask init-db
+   flask init-db || flask --app flaskr init-db
    ```
 _cd flask_learning_
 2. Start the Flask server:
    ```bash
-   flask run
+   flask run || flask --app flaskr run 
    ```
 
 3. Open your browser and navigate to:
