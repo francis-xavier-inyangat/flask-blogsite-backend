@@ -1,17 +1,19 @@
-import sqlite3
-from datetime import datetime
 
-import click
 from flask import current_app, g
+import psycopg2
+from psycopg2.extras import DictCursor
+
+
 
 def get_db():
     if 'db' not in g:
-        g.db = sqlite3.connect(
-            current_app.config['DATABASE'],
-            detect_types=sqlite3.PARSE_DECLTYPES
+        g.db = psycopg2.connect(
+            current_app.config['DATABASE_URL'],
+            cursor_factory=DictCursor
         )
-        g.db.row_factory = sqlite3.Row
+        
     return g.db
+
 def close_db(e=None):
     db = g.pop('db', None)
 
@@ -21,22 +23,27 @@ def close_db(e=None):
 # initialize the database
 def init_db():
     db = get_db()
-
-# run the tables in schema file
     with current_app.open_resource('schema.sql') as f:
-        db.executescript(f.read().decode('utf'))
+        sql_script = f.read().decode('utf-8')
+        cur = db.cursor()
+        # Split the SQL script and execute non-empty, non-whitespace statements
+        for statement in sql_script.split(';'):
+            if statement.strip():  # Skip empty or whitespace-only statements
+                cur.execute(statement.strip())
+        db.commit()
+        cur.close()
 
-@click.command('init-db')
-def init_db_command():
-    init_db()
-    click.echo('Initialized Database')
-
-sqlite3.register_converter(
-    'timestamp', lambda v: datetime.fromisoformat(v.decode())
-)
 
 
 # register the app
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+
+import click
+
+@click.command('init-db')
+def init_db_command():
+    """Clear the existing data and create new tables."""
+    init_db()
+    click.echo('Initialized the database.')

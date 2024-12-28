@@ -6,12 +6,14 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from flaskr.db import get_db
+import psycopg2
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 # regidter view api
 @bp.route('/register', methods = ('GET', 'POST'))
 def register():
+    session['user_id'] = None
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -25,13 +27,14 @@ def register():
         
         if error is None:
             try:
-                db.execute(
-                    "INSERT INTO user (username, password) VALUES (?,?)",
+                with db.cursor() as cur:
+                    cur.execute(
+                    """INSERT INTO "user" (username, password) VALUES (%s,%s)""",
                     (username, generate_password_hash(password)),
                 )
                 db.commit()
             
-            except db.IntegrityError:
+            except psycopg2.IntegrityError:
                 error = f"User {username} is already registered."
             
             else:
@@ -47,9 +50,14 @@ def login():
         password = request.form['password']
         db = get_db()
         error = None
-        user = db.execute(
-            'SELECT * FROM user WHERE username = ?', (username,)
-        ).fetchone()
+        user = None
+
+        with db.cursor() as cur:
+            # Execute the query and fetch the result within the cursor's context
+            cur.execute(
+                "SELECT * FROM \"user\" WHERE username = %s", (username,)
+            )
+            user = cur.fetchone()
 
         if user is None:
             error = 'Incorrect username.'
@@ -66,6 +74,7 @@ def login():
     return render_template('auth/login.html')
 
 
+
 # now we have session, 
 @bp.before_app_request
 def load_logged_in_user():
@@ -74,9 +83,14 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
     else:
-        g.user = get_db().execute(
-            'SELECT * FROM user WHERE id = ?', (user_id,)
-        ).fetchone()
+        db = get_db()
+        with db.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM \"user\" WHERE id = %s", (user_id,)
+            )
+            # Fetch result within the 'with' block
+            g.user = cur.fetchone()
+
 
 
 # logout
